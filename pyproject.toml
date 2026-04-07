@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crux"
+version = "0.1.0"
+description = "Crux — standalone voice-enabled AI coding assistant server"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+[project.scripts]
+crux-serve = "server.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["server*"]
+
+[tool.setuptools.package-data]
+server = ["tts/data/*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

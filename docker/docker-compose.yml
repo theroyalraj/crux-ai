@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: crux
+      POSTGRES_PASSWORD: crux
+      POSTGRES_DB: crux
+    volumes:
+      - crux_postgres:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crux"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - crux_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  crux_postgres:
+  crux_redis:

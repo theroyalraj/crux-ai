@@ -1,0 +1,6 @@
+---
+description: USE WHEN hourly / committer-style checkpoint
+alwaysApply: false
+---
+
+Inspect `git` as needed. **`POST /internal/hourly-decision`** only if **`X-Crux-Secret`** is already in the **shell** (not from reading files). Narration → **`POST /speak-async`**. Flow details → **`CONTRIBUTING.md`**.

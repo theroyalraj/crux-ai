@@ -1,0 +1,6 @@
+---
+description: USE BEFORE large risky refactors
+alwaysApply: false
+---
+
+WIP branch + checkpoint commit via **`POST /git/commit`** if server up, else local `git`. **`CONTRIBUTING.md`** for conventions.

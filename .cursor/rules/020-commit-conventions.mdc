@@ -1,0 +1,6 @@
+---
+description: USE WHEN writing commit message text
+alwaysApply: false
+---
+
+**`CONTRIBUTING.md`** — Conventional Commits (`type(scope): subject`).

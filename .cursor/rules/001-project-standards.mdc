@@ -1,0 +1,9 @@
+---
+description: Pointers only — stack and commands live in CONTRIBUTING.md; agents use HTTP per 000
+alwaysApply: true
+---
+
+- **This repo:** setup, run, tests, API tables, personas, daemons → **`CONTRIBUTING.md`** (copy this pattern in other projects: put specifics there, not in rules).
+- **Agents:** **`000-agent-http.mdc`** — voice via **`scripts/speak.sh`** (**`010`** ack, **`015`** mandatory speak); other APIs **`curl`** + **`CRUX_BASE_URL`**.
+- **Branches and MRs:** **`023-mr-creation.mdc`** — feature branch `type/JIRA-key-description`, always open an MR; ask for JIRA if missing.
+- **Secrets:** never commit `.env` or keys.

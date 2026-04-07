@@ -1,0 +1,6 @@
+---
+description: Text sent to /speak must be plain spoken English
+alwaysApply: true
+---
+
+No `*`, `` ` ``, `#`, bullets, URLs, `%`, arrows, or code in **`POST /speak` / `/speak-async`** `text`. Say “three files”, “percent”, “link” instead. **Length:** long verbal summaries at the end of a task are fine — describe architecture, files, and tradeoffs in full sentences.

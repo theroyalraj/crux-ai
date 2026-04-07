@@ -1,0 +1,6 @@
+---
+description: USE WHEN about to commit
+alwaysApply: false
+---
+
+Run checks from **`CONTRIBUTING.md`**. If **`curl -sf "${CRUX_BASE_URL:-http://127.0.0.1:9090}/health"`** works → **`POST /git/commit`** with JSON `{"message":"…"}`; else local `git` only. Optional **`POST /git/review`** with diff. Voice only via **`POST /speak-async`**.

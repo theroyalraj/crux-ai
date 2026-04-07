@@ -1,0 +1,121 @@
+{
+  "version": 2,
+  "default_locale": "en-US",
+  "provider_selection": "auto",
+  "voice_pool": {
+    "notes": "Personas and locale defaults MUST use only voices listed here. Edge IDs are Microsoft Neural voices. ElevenLabs entries are voice_id strings from the ElevenLabs voice library (Rachel default is multilingual-friendly). macOS say names: System Settings → Accessibility → Spoken Content.",
+    "edge": {
+      "en-US": [
+        "en-US-AvaMultilingualNeural",
+        "en-US-AndrewMultilingualNeural",
+        "en-US-EmmaMultilingualNeural",
+        "en-US-GuyNeural",
+        "en-US-JennyNeural",
+        "en-US-DavisNeural",
+        "en-US-SaraNeural"
+      ],
+      "en-GB": ["en-GB-SoniaNeural", "en-GB-RyanNeural", "en-GB-LibbyNeural"],
+      "en-IE": ["en-IE-ConnorNeural"],
+      "hi-IN": ["hi-IN-MadhurNeural", "hi-IN-SwaraNeural"]
+    },
+    "say": {
+      "en-US": ["Samantha", "Allison", "Victoria", "Fred", "Tom", "Kathy"],
+      "en-GB": ["Daniel", "Kate", "Serena", "Sandy"],
+      "en-IE": ["Moira"],
+      "en-IN": ["Aman"]
+    },
+    "eleven": {
+      "en-US": ["21m00Tcm4TlvDq8ikWAM"],
+      "en-GB": ["21m00Tcm4TlvDq8ikWAM"],
+      "en-IE": ["21m00Tcm4TlvDq8ikWAM"],
+      "hi-IN": ["21m00Tcm4TlvDq8ikWAM"]
+    }
+  },
+  "locales": {
+    "en-US": {
+      "chain": ["eleven", "say", "edge"],
+      "voices": {
+        "say": { "voice": "Samantha", "wpm": 200 },
+        "edge": { "voice": "en-US-AvaMultilingualNeural", "rate": "+5%", "pitch": "+0Hz" },
+        "eleven": { "voice_id": "21m00Tcm4TlvDq8ikWAM", "output_format": "mp3_44100_128" }
+      }
+    },
+    "en-GB": {
+      "chain": ["eleven", "say", "edge"],
+      "voices": {
+        "say": { "voice": "Daniel", "wpm": 192 },
+        "edge": { "voice": "en-GB-SoniaNeural", "rate": "+5%", "pitch": "+0Hz" },
+        "eleven": { "voice_id": "21m00Tcm4TlvDq8ikWAM", "output_format": "mp3_44100_128" }
+      }
+    },
+    "hi-IN": {
+      "chain": ["eleven", "edge"],
+      "voices": {
+        "edge": { "voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "+0Hz" },
+        "eleven": { "voice_id": "21m00Tcm4TlvDq8ikWAM", "output_format": "mp3_44100_128" }
+      }
+    }
+  },
+  "personas": {
+    "forge": {
+      "locale": "en-US",
+      "overrides": {
+        "say": { "voice": "Samantha", "wpm_delta": 0 },
+        "edge": { "voice": "en-US-AvaMultilingualNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    },
+    "sentinel": {
+      "locale": "en-US",
+      "overrides": {
+        "say": { "voice": "Fred", "wpm_delta": 10 },
+        "edge": { "voice": "en-US-AndrewMultilingualNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    },
+    "chronicle": {
+      "locale": "en-GB",
+      "overrides": {
+        "say": { "voice": "Daniel", "wpm_delta": -5 },
+        "edge": { "voice": "en-GB-SoniaNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    },
+    "sage": {
+      "locale": "en-US",
+      "overrides": {
+        "say": { "voice": "Samantha", "wpm_delta": -18 },
+        "edge": { "voice": "en-US-EmmaMultilingualNeural", "rate": "+3%", "pitch": "+0Hz" }
+      }
+    },
+    "maestro": {
+      "locale": "en-US",
+      "overrides": {
+        "say": { "voice": "Kathy", "wpm_delta": -6 },
+        "edge": { "voice": "en-US-JennyNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    },
+    "echo": {
+      "locale": "en-GB",
+      "overrides": {
+        "say": { "voice": "Moira", "wpm_delta": 6 },
+        "edge": { "voice": "en-IE-ConnorNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    },
+    "priya": {
+      "locale": "hi-IN",
+      "overrides": {
+        "edge": { "voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "+0Hz" }
+      }
+    },
+    "siri": {
+      "locale": "en-US",
+      "overrides": {
+        "say": { "voice": "Aman", "wpm_delta": 0 },
+        "edge": { "voice": "en-US-AvaMultilingualNeural", "rate": "+5%", "pitch": "+0Hz" }
+      }
+    }
+  },
+  "platform_chains": {
+    "darwin": ["eleven", "say", "edge"],
+    "linux": ["eleven", "edge"],
+    "win32": ["eleven", "edge"]
+  }
+}

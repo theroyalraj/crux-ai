@@ -1,0 +1,29 @@
+---
+description: Agents integrate via HTTP; speech only through scripts/speak.sh to the server
+alwaysApply: true
+---
+
+## HTTP integration
+
+- **Base:** `$CRUX_BASE_URL` (default `http://127.0.0.1:9090`). **Never** read `.env` in rules; never use **`say`**, **`afplay`**, or local TTS — the **server** synthesizes speech.
+- **Health (optional):** `curl -sf "${CRUX_BASE_URL:-http://127.0.0.1:9090}/health"` is for your own diagnostics only. It **does not** gate voice, commits, or other work. **`010`**, **`015`**: always run **`speak.sh`** when the policy says so; if the server is down, the call may fail — that is fine.
+- **Speech (only path):** **`bash scripts/speak.sh "…" [0|1 priority] [persona]`** — wraps **`/speak-async`** or **`bash scripts/speak.sh --sync "…"`** for **`/speak`**. Do **not** hand-roll **`curl`** to `/speak` for routine narration. Skill: **`.cursor/skills/speak/SKILL.md`**.
+- **Other actions** (commit, review, MR, LLM): **`curl`** JSON per **`CONTRIBUTING.md`**.
+- **Server process:** do not kill or restart unless the **user** asks.
+
+## Voice policy — you write `text`; server reads it aloud
+
+**You author** every spoken string. Obey **`050-no-markdown-in-speech.mdc`**.
+
+| When | Command | priority | Content |
+|------|---------|----------|---------|
+| **Start** | `speak.sh "…" 1` | 1 | Brief ack + goal; vary wording. |
+| **After each major change** | `speak.sh "…" 0` | 0 | One to three sentences; **queues** with other speech (server lock; non-priority does not cancel peers). |
+| **End** | `speak.sh --sync "…" 1` or `speak.sh "…" 1` | 1 for final line | Verbose recap; **`--sync`** if the user must hear all before you stop. |
+| **Blocked** | `speak.sh "…" 0` | 0 | Short; what you need from the user. |
+
+**Major change:** user-visible slice (feature, multi-file refactor, API change, milestone). Not every tiny edit.
+
+**Persona:** optional third arg; see **`CONTRIBUTING.md`**.
+
+**Ack and mandatory completion:** **`010-acknowledge-before-planning.mdc`**, **`015-agent-speak-mandatory.mdc`**.

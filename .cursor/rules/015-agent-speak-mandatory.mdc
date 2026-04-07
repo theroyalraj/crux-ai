@@ -1,0 +1,46 @@
+---
+description: Mandatory spoken acknowledgement, mid-task narration for major steps, and completion summary
+alwaysApply: true
+---
+
+# Agent speak — mandatory
+
+Voice is part of the contract for agent turns in this repo. Follow **`.cursor/skills/speak/SKILL.md`**, **`000-agent-http.mdc`**, **`010-acknowledge-before-planning.mdc`**, and **`050-no-markdown-in-speech.mdc`**.
+
+## Health does not gate speech
+
+Never skip **`bash scripts/speak.sh`** because the Crux server may be unreachable. **Always invoke it** when this rule or **`000`** requires it. Failed **`curl`** is not something you “decide around” by staying silent.
+
+## Non-negotiable
+
+- **Every substantive response** starts with a spoken acknowledgement — priority **`1`**, combined with first work tools where possible (**`010`**).
+- **Every completed task or major milestone** gets a spoken completion summary — priority **`1`** for the closing line, or **`speak.sh --sync`** when the user must hear the full recap before you stop (**`000`** table).
+- **After each major change** (feature slice, multi-file refactor, API change), queue a short status line — priority **`0`** — per **`000`**.
+- Prefer **at most two speak invocations per message** when you can achieve that by merging ack + brief reasoning into one string.
+- Do **not** block the whole turn on TTS unless **`--sync`** is explicitly appropriate for the final summary.
+
+## Templates
+
+Ack + start (often one call):
+
+```bash
+bash scripts/speak.sh "Got it. Restating the task. Brief plan or hypothesis. Starting now." 1
+```
+
+Done (verbose recap):
+
+```bash
+bash scripts/speak.sh --sync "Done. Plain-language summary of what changed and why it matters." 1
+```
+
+Or async priority 1 if sync is not required:
+
+```bash
+bash scripts/speak.sh "Done. Summary of outcomes and verification." 1
+```
+
+## What breaks this rule
+
+- Skipping voice because **`/health`** failed or you assumed the server was down
+- Finishing non-trivial work with no spoken completion line
+- Replacing mandatory speech with chat-only summaries while the user expects voice

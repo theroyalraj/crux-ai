@@ -1,0 +1,43 @@
+---
+description: Narrate acknowledgement before planning or executing work; batch speak with first tool calls
+alwaysApply: true
+---
+
+# Acknowledge before planning
+
+Before presenting a plan or starting substantive work, **always** speak an acknowledgement using **`bash scripts/speak.sh`** per **`.cursor/skills/speak/SKILL.md`** and **`050-no-markdown-in-speech.mdc`**.
+
+## Health does not gate speech
+
+Do **not** skip or delay **`speak.sh`** because **`/health`** failed or the server might be down. Run **`speak.sh` anyway** every time the voice policy calls for it. If the request fails, that is an environment issue — you still attempted voice.
+
+## Zero-delay parallel pattern
+
+Fire the acknowledgement **in the same assistant message** as your first real work tools (Read, Grep, Shell for non-speak work, etc.). Do **not** wait for speak to finish before starting reads or searches.
+
+Typical shape for one turn:
+
+- **Shell:** `bash scripts/speak.sh "Got it. …" 1` (from repo root; use **`block_until_ms: 0`** when the Shell tool supports immediate return so work is not blocked)
+- **Parallel:** Read / Glob / Grep / other investigation
+
+## Required ack (priority 1)
+
+```bash
+bash scripts/speak.sh "Got it. One sentence restating what you want." 1
+```
+
+Use **priority `1`** on acknowledgements so they preempt queued speech when the server supports it.
+
+## Combine ack and short reasoning
+
+When you have a line or two of reasoning, **fold it into the same speak string** instead of a second call. Use a **separate** mid-turn speak line only when the reasoning is long enough to warrant it (see **`015-agent-speak-mandatory.mdc`**).
+
+## Clarifying questions
+
+Speak the question and also write it in chat. You may still batch **`speak.sh`** with speculative reads in the same message.
+
+## Do not
+
+- Treat **`/health`** as a prerequisite for **`speak.sh`**
+- Start coding or editing without a spoken ack when the task is non-trivial
+- Block the whole turn on **`speak.sh`** when async **`/speak-async`** is enough (default **`speak.sh`** path)

@@ -1,0 +1,29 @@
+---
+description: USE WHEN creating a branch, pushing for review, or opening a merge request (MR) or pull request
+alwaysApply: false
+---
+
+## Always use a merge request
+
+Do **not** assume **`git push`** to **`main`** (or default branch) will succeed. **Protected branches** are common. After commit:
+
+1. Use a **feature branch** (see naming below), **`git push -u origin <branch>`**.
+2. Open an **MR** (GitLab) / **PR** (GitHub): **`POST /git/mr`** when **`/health`** passes (**`CONTRIBUTING.md`**); else **`gh pr create`** where applicable, or give the user the **new MR URL** from the remote (e.g. GitLab “create merge request” link).
+
+## Branch naming (JIRA required)
+
+Pattern:
+
+**`{type}/{JIRA-KEY}-{short-kebab-description}`**
+
+- **`type`:** same idea as Conventional Commits — **`feat`**, **`fix`** (use for bugs), **`chore`**, **`docs`**, **`refactor`**, **`test`**, **`perf`**, **`ci`**.
+- **`JIRA-KEY`:** real tracker key, e.g. **`CRUX-42`**, **`PROJ-123`** (project prefix + number).
+- **`short-kebab-description`:** a few words, lowercase, hyphens.
+
+Examples: **`feat/CRUX-12-elevenlabs-tls-options`**, **`fix/PROJ-99-guard-speak-route`**.
+
+## If JIRA is missing
+
+If the user (or task) did **not** provide a JIRA issue key, **ask for it before** choosing the branch name or pushing. Do not invent keys.
+
+Details and HTTP examples: **`CONTRIBUTING.md`** (branches + **`POST /git/mr`**).
