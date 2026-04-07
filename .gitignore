@@ -4,9 +4,12 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
+web/voice-agent/.env
 *.egg-info/
 dist/
 build/
+web/voice-agent/dist/
+web/voice-agent/node_modules/
 var/*.log
 logs/*.log
 logs/*.pid

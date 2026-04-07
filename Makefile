@@ -1,4 +1,4 @@
-.PHONY: setup run test test-tts-voices speak docker-up docker-down \
+.PHONY: setup run test test-tts-voices speak voice-ui docker-up docker-down \
 	stop-server stop-all start-server start-server-terminal start-all start-all-terminal \
 	restart-all restart-server restart-all-terminal restart-server-terminal status \
 	clean
@@ -20,6 +20,9 @@ test-tts-voices-async:
 
 speak:
 	bash scripts/speak.sh "$(TEXT)" $(or $(P),0)
+
+voice-ui:
+	cd web/voice-agent && npm run dev
 
 docker-up:
 	docker compose -f docker/docker-compose.yml up -d

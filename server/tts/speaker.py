@@ -11,6 +11,7 @@ from server.tts.lock import (
     release_speaker_lock,
 )
 from server.tts.service import get_tts_service
+from server.voice.hub import get_voice_hub
 
 log = structlog.get_logger(__name__)
 
@@ -24,6 +25,13 @@ async def speak_text(
     settings = get_settings()
     if not settings.CRUX_TTS_ENABLED:
         return 0.0
+
+    vo = (settings.CRUX_VOICE_OUTPUT or "local").strip().lower()
+    if vo in ("browser", "auto"):
+        hub = get_voice_hub()
+        if hub.subscriber_count > 0:
+            await hub.broadcast_narration(text=text, persona=persona, priority=priority)
+            return 0.0
 
     redis_client = get_redis()
     # Priority bumps generation so in-flight speech stops (preempt). Non-priority reuses the

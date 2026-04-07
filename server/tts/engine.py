@@ -53,11 +53,7 @@ def _win32_schedule_ffplay_volume_fix(pid: int) -> None:
             try:
                 for sess in AudioUtilities.GetAllSessions():
                     try:
-                        if (
-                            sess.Process
-                            and sess.Process.pid == pid
-                            and sess.SimpleAudioVolume
-                        ):
+                        if sess.Process and sess.Process.pid == pid and sess.SimpleAudioVolume:
                             cur = sess.SimpleAudioVolume.GetMasterVolume()
                             if cur < 0.99:
                                 sess.SimpleAudioVolume.SetMasterVolume(1.0, None)

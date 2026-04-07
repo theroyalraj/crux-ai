@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from server.config import get_settings
 from server.daemons.ambient import AmbientDaemon
@@ -31,7 +32,7 @@ from server.daemons.reviewer import ReviewerDaemon
 from server.daemons.watcher import WatcherDaemon
 from server.db import close_postgres, close_redis, init_postgres, init_redis
 from server.db.redis_client import get_redis
-from server.routes import git_routes, health, internal, llm, speak
+from server.routes import git_routes, health, internal, llm, speak, voice_routes
 from server.tts import force_clear_all_locks, kill_all_audio
 from server.tts.eleven_cache import clear_eleven_tts_cache
 
@@ -99,9 +100,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Crux", lifespan=lifespan)
+
+_s = get_settings()
+_cors = [o.strip() for o in _s.CRUX_CORS_ORIGINS.split(",") if o.strip()]
+if _cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 app.include_router(health.router)
 app.include_router(speak.router)
 app.include_router(llm.router)
+app.include_router(voice_routes.router)
 app.include_router(git_routes.router)
 app.include_router(internal.router)
 

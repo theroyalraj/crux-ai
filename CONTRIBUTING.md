@@ -16,6 +16,16 @@ Optional helper: `python scripts/crux_client.py -h` — for git/LLM/health; **`s
 
 **Speech client:** **`bash scripts/speak.sh "text" [0|1] [persona]`** or **`--sync`** for blocking `/speak`. This is the only supported way to trigger voice (server queues non-priority requests; **`priority 1`** preempts).
 
+### Browser voice UI (ElevenLabs agent + Crux bridge)
+
+1. Set **`CRUX_ELEVENLABS_AGENT_ID`**, **`CRUX_ELEVENLABS_API_KEY`**, and **`CRUX_VOICE_OUTPUT=browser`** (or **`auto`**) in **`.env`**.
+2. Start Crux (`make run` or equivalent on port **9090**).
+3. In another shell: **`cd web/voice-agent && npm install && npm run dev`** (Vite proxies **`/voice`** to Crux). Open **`http://127.0.0.1:5173`**.
+4. Click **Start voice** (ConvAI session). Cursor narration via **`speak.sh`** appears as **narrator** lines when at least one browser tab has an open **`/voice/ws`** connection.
+5. **Stop → Crux** ends the agent session and **`POST /voice/downflow`** with the user transcript + recent thread to **`/llm/chat`**.
+
+Copy **`web/voice-agent/.env.example`** → **`.env`**: **`VITE_CRUX_BASE`**, **`VITE_CRUX_WS_ORIGIN`** (optional; defaults to **`ws://127.0.0.1:9090`** when base empty), **`VITE_CRUX_VOICE_SECRET`** (must match **`CRUX_VOICE_WS_SECRET`** if set). **`web/voice-agent/.env`** is gitignored.
+
 ## Tests and style
 
 ```bash
@@ -57,6 +67,9 @@ All paths are under **`CRUX_BASE_URL`**. Examples use `$B` = `"${CRUX_BASE_URL:-
 | `POST /git/review` | `{"diff":"..."}` |
 | `POST /git/mr` | `{"title","body","base"?}` — runs `gh pr create` on server |
 | `POST /llm/chat` | `{"prompt","system"?,"source"?}` |
+| `GET /voice/convai/signed-url` | Query **`agent_id`** optional; returns **`signed_url`** for **`@elevenlabs/client`** (server uses API key) |
+| `WebSocket /voice/ws` | Narration fan-out; optional query **`secret`** = **`CRUX_VOICE_WS_SECRET`** |
+| `POST /voice/downflow` | `{"transcript","messages"?,"system"?,"source"?}` → LLM; optional header **`X-Crux-Voice-Secret`** |
 | `POST /internal/hourly-decision` | `{"decision":"yes\|no"}` + header **`X-Crux-Secret`** (must match server; export in shell, never commit) |
 
 **Review with diff from repo:**
