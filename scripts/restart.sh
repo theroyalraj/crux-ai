@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Back-compat wrapper — see scripts/crux-service.sh for full CLI.
+# Windows: pwsh scripts/restart.ps1 all | server  (full CLI: scripts/crux-service.ps1)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 case "${1:-}" in
