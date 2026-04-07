@@ -1,9 +1,22 @@
 from __future__ import annotations
 
+import asyncio
 import glob
 import logging
 import os
+import sys
 import tempfile
+import warnings
+
+# OpenClaw / Python 3.13+ Windows: Proactor + some SSL/WebSocket stacks are flaky;
+# Selector policy matches skill-gateway/scripts/friday-speak.py.
+if sys.platform == "win32":
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        except AttributeError:
+            pass
 from contextlib import asynccontextmanager
 
 import structlog

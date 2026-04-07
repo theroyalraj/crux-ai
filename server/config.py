@@ -60,6 +60,10 @@ class CruxSettings(BaseSettings):
     CRUX_SAY_VOICE_BLOCK: str = ""
     # Absolute path to ffplay if not on PATH (e.g. /opt/homebrew/bin/ffplay)
     CRUX_FFPLAY_PATH: str = ""
+    # Windows: optional SDL_AUDIODRIVER. Empty = inherit process env (OpenClaw default).
+    CRUX_SDL_AUDIODRIVER: str = ""
+    # Windows only: hide ffplay console (CREATE_NO_WINDOW). Set false to debug visibly.
+    CRUX_FFPLAY_WINDOWS_NO_WINDOW: bool = True
 
     # ElevenLabs (chain: eleven first, then say on macOS, then edge). API key from app settings.
     CRUX_ELEVENLABS_ENABLED: bool = True

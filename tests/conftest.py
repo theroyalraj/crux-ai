@@ -7,7 +7,9 @@ from server.tts.service import reset_tts_service_for_tests
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache() -> None:
+def _clear_settings_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Isolate from developer .env (e.g. CRUX_TTS_PROVIDER=edge) so registry tests stay deterministic.
+    monkeypatch.setenv("CRUX_TTS_PROVIDER", "")
     reset_tts_service_for_tests()
     get_settings.cache_clear()
     yield
