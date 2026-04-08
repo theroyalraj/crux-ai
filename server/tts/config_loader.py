@@ -80,6 +80,8 @@ def effective_provider_chain(
     locale_chain: list[str],
     settings: CruxSettings,
 ) -> list[str]:
+    if (settings.CRUX_TTS_RELAY_BASE_URL or "").strip():
+        return ["relay"]
     plat = sys.platform
     allowed = list(cfg.get("platform_chains", {}).get(plat, ["edge"]))
     if not settings.CRUX_EDGE_TTS_ENABLED:

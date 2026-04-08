@@ -8,6 +8,11 @@ __pycache__/
 dist/
 build/
 var/*.log
+# Local n8n export may embed Twilio or other secrets
+wa-inbound.json
+var/action_plan*.json
+var/action_plan_dispatch.json
+var/verbose_speak_test.json
 logs/*.log
 logs/*.pid
 .DS_Store

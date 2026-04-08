@@ -9,7 +9,7 @@ Voice is part of the contract for agent turns in this repo. Follow **`.cursor/sk
 
 ## Health does not gate speech
 
-Never skip **`bash scripts/speak.sh`** because the Crux server may be unreachable. **Always invoke it** when this rule or **`000`** requires it. Failed **`curl`** is not something you “decide around” by staying silent.
+Never skip **`speak.sh`** / **`speak.ps1`** because the Crux server may be unreachable. **Always invoke the speak script** when this rule or **`000`** requires it. Failed **`curl`** is not something you “decide around” by staying silent.
 
 ## Non-negotiable
 
@@ -27,16 +27,30 @@ Ack + start (often one call):
 bash scripts/speak.sh "Got it. Restating the task. Brief plan or hypothesis. Starting now." 1
 ```
 
+Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "Got it. Restating the task. Brief plan or hypothesis. Starting now." 1
+```
+
 Done (verbose recap):
 
 ```bash
 bash scripts/speak.sh --sync "Done. Plain-language summary of what changed and why it matters." 1
 ```
 
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 --sync "Done. Plain-language summary of what changed and why it matters." 1
+```
+
 Or async priority 1 if sync is not required:
 
 ```bash
 bash scripts/speak.sh "Done. Summary of outcomes and verification." 1
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "Done. Summary of outcomes and verification." 1
 ```
 
 ## What breaks this rule

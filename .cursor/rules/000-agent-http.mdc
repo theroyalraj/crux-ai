@@ -1,5 +1,5 @@
 ---
-description: Agents integrate via HTTP; speech only through scripts/speak.sh to the server
+description: Agents integrate via HTTP; speech through scripts/speak.sh (Unix) or scripts/speak.ps1 (Windows)
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 - **Base:** `$CRUX_BASE_URL` (default `http://127.0.0.1:9090`). **Never** read `.env` in rules; never use **`say`**, **`afplay`**, or local TTS — the **server** synthesizes speech.
 - **Health (optional):** `curl -sf "${CRUX_BASE_URL:-http://127.0.0.1:9090}/health"` is for your own diagnostics only. It **does not** gate voice, commits, or other work. **`010`**, **`015`**: always run **`speak.sh`** when the policy says so; if the server is down, the call may fail — that is fine.
-- **Speech (only path):** **`bash scripts/speak.sh "…" [0|1 priority] [persona]`** — wraps **`/speak-async`** or **`bash scripts/speak.sh --sync "…"`** for **`/speak`**. Do **not** hand-roll **`curl`** to `/speak` for routine narration. Skill: **`.cursor/skills/speak/SKILL.md`**.
+- **Speech (only path):** Unix / Git Bash: **`bash scripts/speak.sh "…" [0|1] [persona]`** (async) or **`bash scripts/speak.sh --sync "…"`** (wait for playback). Windows PowerShell: **`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "…" [0|1] [persona]`** or **`… -File scripts/speak.ps1 --sync "…"`**. On Windows **do not** use **`&&`** after **`cd`** in PowerShell 5.x (use **`;`**). Do **not** hand-roll **`curl`** to `/speak` for routine narration. Skill: **`.cursor/skills/speak/SKILL.md`**.
 - **Other actions** (commit, review, MR, LLM): **`curl`** JSON per **`CONTRIBUTING.md`**.
 - **Server process:** do not kill or restart unless the **user** asks.
 

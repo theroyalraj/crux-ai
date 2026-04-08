@@ -82,8 +82,20 @@ class CruxSettings(BaseSettings):
     # Redis cache for synthesized MP3 (cleared on server startup); 3600 = 1 hour
     CRUX_TTS_ELEVEN_CACHE_TTL_SEC: int = 3600
 
+    # Public POST /tts/synthesize (MP3 body only, no playback). Enable on upstream ngrok host only.
+    CRUX_TTS_SYNTHESIZE_ENABLED: bool = False
+    # Downstream: HTTP TTS relay (e.g. Mac) POSTs here; forces provider chain to relay only.
+    CRUX_TTS_RELAY_BASE_URL: str = ""
+    CRUX_TTS_RELAY_TIMEOUT_SEC: float = 120.0
+    # Optional JSON merged into relay client headers (e.g. ngrok skip browser warning as JSON key).
+    CRUX_TTS_RELAY_EXTRA_HEADERS_JSON: str = ""
+    # darwin only: afplay (built-in) vs ffplay for MP3 playback
+    CRUX_DARWIN_MP3_PLAYER: str = "ffplay"
+
     REDIS_URL: str = "redis://127.0.0.1:6379"
     DATABASE_URL: str = "postgresql://crux:crux@127.0.0.1:5433/crux"
+    # If set, overrides DATABASE_URL (OpenClaw pc-agent uses this name).
+    OPENCLAW_DATABASE_URL: str = ""
     EMBEDDING_DIM: int = 1536
 
     CACHE_TTL_SEC: int = 3600
@@ -132,6 +144,22 @@ class CruxSettings(BaseSettings):
     CRUX_WATCHER_DEBOUNCE_SEC: float = 5.0
     # When true, file watcher triggers Echo TTS (races with /speak on generation counter).
     CRUX_WATCHER_SPEAK_ENABLED: bool = False
+
+    # WhatsApp (Twilio)
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_ACCOUNT_SID: str = ""
+    WHATSAPP_AUTH_TOKEN: str = ""
+    WHATSAPP_FROM: str = "whatsapp:+14155238886"  # Twilio sandbox default
+    WHATSAPP_TO: str = ""  # e.g. whatsapp:+919999999999
+    # HX... from Twilio Content Template Builder (daily_action_plan); empty = free-form sandbox
+    WHATSAPP_CONTENT_SID: str = ""
+    # Fresh numbering convention anchor (reserved for future day-boundary logic)
+    ACTION_DAILY_RESET_HOUR_IST: int = 10
+
+    def postgres_dsn(self) -> str:
+        """Same DSN rules as OpenClaw: OPENCLAW_DATABASE_URL overrides DATABASE_URL."""
+        alt = (self.OPENCLAW_DATABASE_URL or "").strip()
+        return alt if alt else self.DATABASE_URL
 
 
 @functools.lru_cache

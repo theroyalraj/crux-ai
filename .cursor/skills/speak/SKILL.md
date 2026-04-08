@@ -4,8 +4,22 @@
 
 ## Command
 
+**Unix / Git Bash:** use bash (requires `jq` on PATH, same as before):
+
 ```bash
 bash scripts/speak.sh "Plain English only, no symbols" [priority] [persona]
+```
+
+**Windows PowerShell:** use `scripts/speak.ps1` (uses `curl.exe`, no bash, no `jq`). **Do not use `cd ... && ...` on PowerShell 5.x** — `&&` is invalid; chain with `;` instead.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "Plain English only, no symbols" [priority] [persona]
+```
+
+Example from repo root:
+
+```powershell
+cd d:\code\crux-ai; powershell -NoProfile -ExecutionPolicy Bypass -File scripts\speak.ps1 "Hello" 1
 ```
 
 - **priority:** `0` = queue with other speech (default). `1` = preempt current speech.
@@ -15,6 +29,10 @@ Wait for playback to finish before ending the turn:
 
 ```bash
 bash scripts/speak.sh --sync "Your closing summary here" 1
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 --sync "Your closing summary here" 1
 ```
 
 ## Rules

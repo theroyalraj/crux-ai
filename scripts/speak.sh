@@ -2,6 +2,9 @@
 # Single client path to Crux speech — always hits the server (no local say).
 # Foreground curl so callers chain naturally; server serializes playback via lock + generation rules.
 #
+# Windows (PowerShell 5.x): use scripts/speak.ps1 instead — PowerShell does not support "cd ... && ...";
+# chain with ";" or run speak.ps1 directly. See .cursor/skills/speak/SKILL.md.
+#
 # Usage:
 #   bash scripts/speak.sh "Plain English text" [priority 0|1] [persona]
 #   bash scripts/speak.sh --sync "text" [0|1] [persona]    # POST /speak, wait for playback
