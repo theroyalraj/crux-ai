@@ -155,6 +155,15 @@ class CruxSettings(BaseSettings):
     WHATSAPP_CONTENT_SID: str = ""
     # Fresh numbering convention anchor (reserved for future day-boundary logic)
     ACTION_DAILY_RESET_HOUR_IST: int = 10
+    # Public HTTPS base for Twilio to fetch MP3. Empty: use Host and X-Forwarded-* from webhook.
+    CRUX_PUBLIC_BASE_URL: str = ""
+    # Attach TTS MP3; Twilio GETs /whatsapp/media/{id}. Needs CRUX_TTS_ENABLED and reachable URL.
+    WHATSAPP_VOICE_REPLY_ENABLED: bool = True
+    WHATSAPP_VOICE_PERSONA: str = "forge"
+    WHATSAPP_VOICE_MAX_CHARS: int = 700
+    WHATSAPP_MEDIA_TTL_SEC: int = 300
+    # If true, attach voice MP3 only when user says speak, talk to me, voice, etc.
+    WHATSAPP_VOICE_KEYWORD_ONLY: bool = True
 
     def postgres_dsn(self) -> str:
         """Same DSN rules as OpenClaw: OPENCLAW_DATABASE_URL overrides DATABASE_URL."""

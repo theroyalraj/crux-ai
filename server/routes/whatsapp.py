@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import html
 import re
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import asyncpg
 import structlog
-from fastapi import APIRouter, Form, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import PlainTextResponse, Response
 
 from server.config import get_settings
 from server.db import get_pool
+from server.db.redis_client import get_redis
 from server.models.action import (
     ActionItem,
     ActionStatusItem,
@@ -19,6 +23,7 @@ from server.models.action import (
     DispatchPayload,
     MarkDoneRequest,
 )
+from server.tts.service import get_tts_service
 
 log = structlog.get_logger(__name__)
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
@@ -50,6 +55,261 @@ def _parse_mark_done_numbers(body: str) -> list[int] | None:
             if re.fullmatch(r"[\d\s]+", inner):
                 return [int(x) for x in inner.split()]
     return None
+
+
+def _user_wants_voice(body: str) -> bool:
+    """Voice attachment only when user explicitly asks (speak, talk to me, read aloud, …)."""
+    low = body.lower().strip()
+    if not low:
+        return False
+    patterns = (
+        r"\bspeak\b",
+        r"\btalk to me\b",
+        r"\bvoice\b",
+        r"\bnarrate\b",
+        r"\btts\b",
+        r"\b(read|say)\s+(it\s+)?(aloud|out loud)\b",
+        r"\bread\s+(the\s+)?(message|plan|list|status|that)\b",
+        r"\bsay\s+it\b",
+        r"\bverbal(ly)?\b",
+        r"\bas\s+audio\b",
+        r"\bon\s+speaker\b",
+    )
+    return any(re.search(p, low) for p in patterns)
+
+
+def _user_asks_action_plan(body: str) -> bool:
+    """Natural-language requests for today's numbered status (same as /action)."""
+    low = body.lower().strip()
+    if not low or low == "/action":
+        return False
+    if "action plan" in low or "daily plan" in low:
+        return True
+    if re.search(r"\bmy\s+(action\s+)?plan\b", low):
+        return True
+    if re.search(
+        r"\b(tell|show|give|send)\s+me\b.*\b(plan|tasks?|list|priorities|status|today)\b",
+        low,
+    ):
+        return True
+    if re.search(
+        r"\b(tell|show|give|send)\s+(me\s+)?(the\s+)?(full\s+)?(plan|tasks|list|priorities|status)\b",
+        low,
+    ):
+        return True
+    if re.search(r"\bwhat\s+('?s|is)\s+(on\s+)?(my\s+)?(list|plate|schedule)\b", low):
+        return True
+    if re.search(r"\bwhat\s+(do\s+i\s+have|are\s+my\s+tasks|should\s+i\s+do)\b", low):
+        return True
+    if re.search(r"\b(remind\s+me|what\s+about)\b", low) and (
+        "task" in low or "plan" in low or "today" in low
+    ):
+        return True
+    if re.search(
+        r"\b(full\s+status|my\s+tasks?|task\s+list|what'?s\s+on\s+my\s+list)\b",
+        low,
+    ):
+        return True
+    return False
+
+
+def _fallback_reply_text(body: str) -> str:
+    """When the message is not /action or mark-done numbers."""
+    low = body.strip().lower()
+    words = low.split()
+    head = words[0] if words else ""
+    positives = frozenset(
+        {
+            "perfect",
+            "great",
+            "awesome",
+            "nice",
+            "good",
+            "super",
+            "lovely",
+            "excellent",
+        }
+    )
+    if head in positives:
+        return (
+            "🙌 Noted — glad that works.\n"
+            "Ask for your *action plan* or *my tasks*, or send /action. "
+            "Reply with numbers (e.g. 8 done) to mark items. "
+            "Say *speak* or *talk to me* if you want voice."
+        )
+    if low in ("ok", "k", "yes", "yep", "yeah", "thanks", "thank you", "thx"):
+        return (
+            "✅ Got it.\n"
+            "Ask *what's my plan* or /action for your list. "
+            "Numbers or *8 done* to mark done. Add *speak* for voice."
+        )
+    return (
+        "👋 I can send your *action plan*, mark items by number, or chat in short replies.\n"
+        "Try: *tell me my action plan*, *what do I have today*, or /action\n"
+        "Mark done: *1 3* or *8 done*\n"
+        "Voice (optional): add *speak* or *talk to me* to any request."
+    )
+
+
+def _public_base_url(request: Request) -> str | None:
+    """Public HTTPS base for MP3 fetch: webhook host or CRUX_PUBLIC_BASE_URL."""
+    s = get_settings()
+    override = (s.CRUX_PUBLIC_BASE_URL or "").strip().rstrip("/")
+    if override:
+        return override
+    proto = (
+        (request.headers.get("x-forwarded-proto") or request.url.scheme or "https")
+        .split(",")[0]
+        .strip()
+    )
+    host = (
+        (request.headers.get("x-forwarded-host") or request.headers.get("host") or "")
+        .split(",")[0]
+        .strip()
+    )
+    if not host:
+        return None
+    return f"{proto}://{host}"
+
+
+def _voice_script_from_reply(text: str, max_chars: int) -> str:
+    """Strip markdown-ish noise for TTS; cap length."""
+    t = re.sub(r"[*_~`#]", " ", text)
+    t = re.sub(r"[━─—]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    if len(t) > max_chars:
+        t = t[: max_chars - 3].rstrip() + "..."
+    return t or "Update from your action plan."
+
+
+async def _prepare_voice_media_url_for_text(
+    request: Request, reply_text: str
+) -> tuple[str | None, int]:
+    """Public MP3 URL for Twilio media_url."""
+    s = get_settings()
+    if not s.CRUX_TTS_ENABLED or not s.WHATSAPP_VOICE_REPLY_ENABLED or not s.WHATSAPP_ENABLED:
+        return None, 0
+
+    base = _public_base_url(request)
+    if not base:
+        log.warning("whatsapp_voice_skip_no_public_base")
+        return None, 0
+
+    voice_text = _voice_script_from_reply(reply_text, s.WHATSAPP_VOICE_MAX_CHARS)
+    persona = (s.WHATSAPP_VOICE_PERSONA or "").strip() or None
+    try:
+        svc = get_tts_service()
+        synth = await svc.synthesize_mp3(voice_text, persona=persona)
+    except Exception as e:
+        log.warning("whatsapp_voice_synth_failed", err=str(e))
+        return None, 0
+    if not synth:
+        return None, 0
+
+    mp3, _prov = synth
+    r = get_redis()
+    if r is None:
+        log.warning("whatsapp_voice_skip_no_redis")
+        return None, 0
+
+    media_id = secrets.token_urlsafe(24)
+    try:
+        await r.setex(
+            f"crux:wa:media:{media_id}",
+            s.WHATSAPP_MEDIA_TTL_SEC,
+            base64.b64encode(mp3).decode("ascii"),
+        )
+    except Exception as e:
+        log.warning("whatsapp_voice_redis_failed", err=str(e))
+        return None, 0
+
+    media_url = f"{base}/whatsapp/media/{media_id}"
+    log.info("whatsapp_voice_media_ready", media_chars=len(voice_text), provider=_prov)
+    return media_url, len(voice_text)
+
+
+def _send_whatsapp_to_number(to: str, body: str, media_url: str | None) -> str:
+    """Same pattern as scripts/verify_twilio_whatsapp_media.py: REST Messages.create."""
+    s = get_settings()
+    sid_ok = (s.WHATSAPP_ACCOUNT_SID or "").strip()
+    tok_ok = (s.WHATSAPP_AUTH_TOKEN or "").strip()
+    if not sid_ok or not tok_ok:
+        raise RuntimeError("twilio_credentials_missing")
+    if s.WHATSAPP_CONTENT_SID:
+        raise RuntimeError("whatsapp_content_sid_blocks_freeform")
+    client = _twilio_client()
+    to = to.strip()
+    from_ = s.WHATSAPP_FROM.strip()
+    if media_url:
+        msg = client.messages.create(
+            body=body,
+            from_=from_,
+            to=to,
+            media_url=[media_url],
+        )
+    else:
+        msg = client.messages.create(body=body, from_=from_, to=to)
+    return str(msg.sid)
+
+
+def _twiml_message_only(reply_text: str) -> PlainTextResponse:
+    safe = html.escape(reply_text, quote=False)
+    twiml = f"<?xml version='1.0'?>\n<Response>\n  <Message>{safe}</Message>\n</Response>"
+    return PlainTextResponse(twiml, media_type="application/xml")
+
+
+def _twiml_empty() -> PlainTextResponse:
+    """Webhook already replied via REST; Twilio expects valid TwiML."""
+    return PlainTextResponse("<?xml version='1.0'?>\n<Response />\n", media_type="application/xml")
+
+
+async def _deliver_inbound_reply(
+    request: Request,
+    reply_text: str,
+    to_addr: str,
+    *,
+    voice_requested: bool = False,
+) -> PlainTextResponse:
+    """Twilio REST send; empty TwiML on success. Voice MP3 only if keywords or config allows."""
+    s = get_settings()
+    safe = html.escape(reply_text, quote=False)
+
+    if not (s.WHATSAPP_ENABLED and (s.WHATSAPP_ACCOUNT_SID or "").strip() and to_addr.strip()):
+        log.warning("whatsapp_inbound_skip_send", reason="disabled_or_no_to")
+        return _twiml_message_only(reply_text)
+
+    allow_voice = s.WHATSAPP_VOICE_REPLY_ENABLED and (
+        not s.WHATSAPP_VOICE_KEYWORD_ONLY or voice_requested
+    )
+    media_url = None
+    if allow_voice:
+        media_url, _n = await _prepare_voice_media_url_for_text(request, reply_text)
+
+    try:
+        sid = await asyncio.to_thread(
+            _send_whatsapp_to_number,
+            to_addr,
+            reply_text,
+            media_url,
+        )
+        log.info("whatsapp_inbound_rest_sent", sid=sid, has_voice=bool(media_url))
+        return _twiml_empty()
+    except Exception as e:
+        log.warning("whatsapp_inbound_rest_failed_fallback_twiml", err=str(e))
+        if media_url:
+            safe_url = html.escape(media_url, quote=True)
+            twiml = f"""<?xml version='1.0'?>
+<Response>
+  <Message>
+    <Body>{safe}</Body>
+    <Media>{safe_url}</Media>
+  </Message>
+</Response>"""
+            return PlainTextResponse(twiml, media_type="application/xml")
+        return PlainTextResponse(
+            f"<?xml version='1.0'?>\n<Response>\n  <Message>{safe}</Message>\n</Response>",
+            media_type="application/xml",
+        )
 
 
 def _require_pool() -> asyncpg.Pool:
@@ -451,18 +711,29 @@ async def whatsapp_inbound_probe() -> PlainTextResponse:
     )
 
 
-async def _handle_whatsapp_inbound(body_text: str, from_addr: str) -> PlainTextResponse:
+async def _handle_whatsapp_inbound(
+    body_text: str, from_addr: str, request: Request
+) -> PlainTextResponse:
     log.debug("whatsapp_inbound", from_addr=from_addr)
     body = body_text.strip()
-    pool = _require_pool()
     today = _today_ist()
+    voice_requested = _user_wants_voice(body)
 
-    if body.lower() == "/action":
+    bl = body.lower()
+    if bl == "/action" or bl.startswith("/action "):
+        pool = _require_pool()
+        async with pool.acquire() as conn:
+            items = await _get_today_items(conn, today)
+        reply = _build_status_message(items, today)
+
+    elif _user_asks_action_plan(body):
+        pool = _require_pool()
         async with pool.acquire() as conn:
             items = await _get_today_items(conn, today)
         reply = _build_status_message(items, today)
 
     elif (numbers := _parse_mark_done_numbers(body)) is not None:
+        pool = _require_pool()
         async with pool.acquire() as conn:
             updated: list[int] = []
             for num in numbers:
@@ -484,26 +755,37 @@ async def _handle_whatsapp_inbound(body_text: str, from_addr: str) -> PlainTextR
         else:
             reply = "⚠️ No matching pending items"
     else:
-        return PlainTextResponse(
-            "<?xml version='1.0'?><Response></Response>",
-            media_type="application/xml",
-        )
+        reply = _fallback_reply_text(body)
 
-    safe = html.escape(reply, quote=False)
-    twiml = f"""<?xml version='1.0'?>
-<Response>
-  <Message>{safe}</Message>
-</Response>"""
-    return PlainTextResponse(twiml, media_type="application/xml")
+    return await _deliver_inbound_reply(request, reply, from_addr, voice_requested=voice_requested)
 
 
 @router.post("/inbound", response_class=PlainTextResponse)
 async def whatsapp_inbound(
+    request: Request,
     body_text: str = Form("", alias="Body"),
     from_addr: str = Form("", alias="From"),
 ) -> PlainTextResponse:
     """Twilio webhook: TwiML reply. Same path as GET probe; Twilio uses POST only."""
-    return await _handle_whatsapp_inbound(body_text, from_addr)
+    return await _handle_whatsapp_inbound(body_text, from_addr, request)
+
+
+@router.get("/media/{media_id}")
+async def whatsapp_media(media_id: str) -> Response:
+    """Twilio GETs this URL to attach MP3 to the WhatsApp message."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,48}", media_id):
+        raise HTTPException(status_code=404, detail="not found")
+    r = get_redis()
+    if r is None:
+        raise HTTPException(status_code=503, detail="cache unavailable")
+    raw = await r.get(f"crux:wa:media:{media_id}")
+    if not raw:
+        raise HTTPException(status_code=404, detail="expired or missing")
+    try:
+        mp3 = base64.b64decode(raw)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="invalid") from None
+    return Response(content=mp3, media_type="audio/mpeg")
 
 
 @router.get("/status")
