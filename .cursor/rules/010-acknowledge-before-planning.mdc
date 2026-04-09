@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Acknowledge before planning
 
-Before presenting a plan or starting substantive work, **always** speak an acknowledgement using **`bash scripts/speak.sh`** per **`.cursor/skills/speak/SKILL.md`** and **`050-no-markdown-in-speech.mdc`**.
+Before presenting a plan or starting substantive work, **always** speak an acknowledgement using **`scripts/speak.sh`** (bash) or **`scripts/speak.ps1`** (Windows PowerShell) per **`.cursor/skills/speak/SKILL.md`** and **`050-no-markdown-in-speech.mdc`**.
 
 ## Health does not gate speech
 
@@ -17,13 +17,19 @@ Fire the acknowledgement **in the same assistant message** as your first real wo
 
 Typical shape for one turn:
 
-- **Shell:** `bash scripts/speak.sh "Got it. …" 1` (from repo root; use **`block_until_ms: 0`** when the Shell tool supports immediate return so work is not blocked)
+- **Shell:** `bash scripts/speak.sh "Got it. …" 1` or on Windows `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "Got it. …" 1` (from repo root; use **`block_until_ms: 0`** when the Shell tool supports immediate return so work is not blocked; on Windows PowerShell 5.x chain with **`;`** not **`&&`**)
 - **Parallel:** Read / Glob / Grep / other investigation
 
 ## Required ack (priority 1)
 
 ```bash
 bash scripts/speak.sh "Got it. One sentence restating what you want." 1
+```
+
+Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "Got it. One sentence restating what you want." 1
 ```
 
 Use **priority `1`** on acknowledgements so they preempt queued speech when the server supports it.

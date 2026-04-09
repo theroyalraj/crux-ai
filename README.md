@@ -28,6 +28,7 @@ In another terminal:
 export CRUX_BASE_URL=http://127.0.0.1:9090   # optional if default
 make speak TEXT="hello world"                # scripts/speak.sh → /speak-async
 # or: bash scripts/speak.sh "hello" 1        # priority preempt
+# Windows: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/speak.ps1 "hello" 1
 ```
 
 **Contributing & agents:** **`CONTRIBUTING.md`** — setup, API/`curl` examples, personas, code style. Cursor rules stay short and point there.

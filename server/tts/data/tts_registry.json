@@ -28,7 +28,7 @@
       "en-US": ["21m00Tcm4TlvDq8ikWAM"],
       "en-GB": ["21m00Tcm4TlvDq8ikWAM"],
       "en-IE": ["21m00Tcm4TlvDq8ikWAM"],
-      "hi-IN": ["21m00Tcm4TlvDq8ikWAM"]
+      "hi-IN": ["MF4J4IDTRo0AxOO4dpFR"]
     }
   },
   "locales": {
@@ -52,16 +52,19 @@
       "chain": ["eleven", "edge"],
       "voices": {
         "edge": { "voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "+0Hz" },
-        "eleven": { "voice_id": "21m00Tcm4TlvDq8ikWAM", "output_format": "mp3_44100_128" }
+        "eleven": {
+          "voice_id": "MF4J4IDTRo0AxOO4dpFR",
+          "model_id": "eleven_multilingual_v2",
+          "output_format": "mp3_44100_128"
+        }
       }
     }
   },
   "personas": {
     "forge": {
-      "locale": "en-US",
+      "locale": "hi-IN",
       "overrides": {
-        "say": { "voice": "Samantha", "wpm_delta": 0 },
-        "edge": { "voice": "en-US-AvaMultilingualNeural", "rate": "+5%", "pitch": "+0Hz" }
+        "edge": { "voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "+0Hz" }
       }
     },
     "sentinel": {

@@ -15,6 +15,7 @@ from server.tts.engine import normalize_for_speech
 from server.tts.providers.base import TtsProvider
 from server.tts.providers.edge_provider import EdgeTtsProvider
 from server.tts.providers.elevenlabs_provider import ElevenLabsTtsProvider
+from server.tts.providers.relay_provider import RelayTtsProvider
 from server.tts.providers.say_provider import MacSayProvider
 from server.tts.voices import resolve_edge_voice, resolve_eleven_voice_id, resolve_say_voice
 
@@ -29,7 +30,7 @@ def _merge_locale_voices(
     cfg: dict[str, Any],
     persona_key: str,
     settings: CruxSettings,
-) -> tuple[str, dict[str, Any], list[str]] | None:
+) -> tuple[str, dict[str, Any], list[str], str] | None:
     pk = (persona_key or default_persona_key()).lower().strip()
     default_loc = cfg.get("default_locale", "en-US")
     personas = cfg.get("personas", {})
@@ -52,7 +53,7 @@ def _merge_locale_voices(
     if not chain:
         log.error("tts_empty_chain", locale=locale, persona=pk)
         return None
-    return locale, voices, chain
+    return locale, voices, chain, pk
 
 
 def _build_request(
@@ -60,6 +61,8 @@ def _build_request(
     voices: dict[str, Any],
     stream: bool,
     settings: CruxSettings,
+    *,
+    persona_key: str | None,
 ) -> TtsPlaybackRequest:
     edge = voices.get("edge", {}) if isinstance(voices.get("edge"), dict) else {}
     say = voices.get("say", {}) if isinstance(voices.get("say"), dict) else {}
@@ -88,6 +91,7 @@ def _build_request(
         eleven_voice_id=e_vid,
         eleven_model_id=e_model,
         eleven_output_format=e_fmt or settings.CRUX_ELEVENLABS_OUTPUT_FORMAT,
+        persona=persona_key,
     )
 
 
@@ -101,6 +105,7 @@ class TtsService:
             "eleven": ElevenLabsTtsProvider(),
             "say": MacSayProvider(),
             "edge": EdgeTtsProvider(),
+            "relay": RelayTtsProvider(),
         }
 
     def register_provider(self, provider: TtsProvider) -> None:
@@ -117,9 +122,9 @@ class TtsService:
         merged = _merge_locale_voices(self._registry, persona or "", self._settings)
         if merged is None:
             return 0.0
-        _locale, voices, chain = merged
+        _locale, voices, chain, pk = merged
         clean = normalize_for_speech(text)
-        req = _build_request(clean, voices, stream, self._settings)
+        req = _build_request(clean, voices, stream, self._settings, persona_key=pk)
 
         last_err: BaseException | None = None
         for pid in chain:
@@ -141,6 +146,40 @@ class TtsService:
         else:
             log.error("tts_no_available_provider", chain=chain)
         return 0.0
+
+    async def synthesize_mp3(self, text: str, *, persona: str | None) -> tuple[bytes, str] | None:
+        """Return (mp3_bytes, provider_id) for HTTP synthesize; no playback, no speaker lock."""
+        merged = _merge_locale_voices(self._registry, persona or "", self._settings)
+        if merged is None:
+            return None
+        _locale, voices, chain, pk = merged
+        clean = normalize_for_speech(text)
+        req = _build_request(clean, voices, stream=False, settings=self._settings, persona_key=pk)
+        synth_chain = [p for p in chain if p in ("eleven", "edge")]
+        last_err: BaseException | None = None
+        for pid in synth_chain:
+            prov = self._providers.get(pid)
+            if prov is None:
+                continue
+            sm = getattr(prov, "synthesize_mp3", None)
+            if sm is None or not callable(sm):
+                continue
+            if not prov.is_available():
+                log.debug("tts_synth_skip_unavailable", provider=pid)
+                continue
+            try:
+                log.info("tts_synthesize_using", provider=pid, locale=_locale)
+                out = await sm(req)
+                if out:
+                    return out, pid
+            except Exception as e:
+                last_err = e
+                log.warning("tts_synthesize_failed_try_next", provider=pid, err=str(e))
+        if last_err:
+            log.error("tts_synthesize_all_failed", err=str(last_err))
+        else:
+            log.error("tts_synthesize_no_provider", chain=synth_chain)
+        return None
 
 
 _tts_service: TtsService | None = None

@@ -14,7 +14,7 @@ from collections.abc import Awaitable, Callable
 
 import structlog
 
-from server.config import get_settings
+from server.config import CruxSettings, get_settings
 from server.tts.voices import resolve_edge_voice
 
 log = structlog.get_logger(__name__)
@@ -53,11 +53,7 @@ def _win32_schedule_ffplay_volume_fix(pid: int) -> None:
             try:
                 for sess in AudioUtilities.GetAllSessions():
                     try:
-                        if (
-                            sess.Process
-                            and sess.Process.pid == pid
-                            and sess.SimpleAudioVolume
-                        ):
+                        if sess.Process and sess.Process.pid == pid and sess.SimpleAudioVolume:
                             cur = sess.SimpleAudioVolume.GetMasterVolume()
                             if cur < 0.99:
                                 sess.SimpleAudioVolume.SetMasterVolume(1.0, None)
@@ -155,6 +151,21 @@ def edge_playback_available() -> bool:
     return resolve_ffplay() is not None
 
 
+def resolve_afplay() -> str | None:
+    for candidate in (shutil.which("afplay"), "/usr/bin/afplay"):
+        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def mp3_playback_available() -> bool:
+    """True if playback_mp3_bytes can run (ffplay, or Darwin afplay when configured)."""
+    s = get_settings()
+    if sys.platform == "darwin" and s.CRUX_DARWIN_MP3_PLAYER.strip().lower() == "afplay":
+        return resolve_afplay() is not None
+    return resolve_ffplay() is not None
+
+
 async def playback_say(
     text: str,
     voice: str,
@@ -242,6 +253,44 @@ async def generation_allowed(gen_ok: Callable[[], bool | Awaitable[bool]]) -> bo
     return await _eval_gen_ok(gen_ok)
 
 
+async def _playback_mp3_afplay(
+    data: bytes,
+    generation_ok: Callable[[], bool | Awaitable[bool]],
+    settings: CruxSettings,
+) -> float:
+    afplay = resolve_afplay()
+    if not afplay:
+        log.error("afplay_not_found")
+        if settings.CRUX_TTS_FALLBACK == "notify":
+            _notify_macos("Crux could not find afplay.")
+        return 0.0
+    path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", prefix="crux-tts-", delete=False) as f:
+            path = f.name
+            f.write(data)
+        if not await _eval_gen_ok(generation_ok):
+            return 0.0
+        proc = await asyncio.create_subprocess_exec(
+            afplay,
+            path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        _audio_child_pids.add(proc.pid)
+        try:
+            await proc.wait()
+        finally:
+            _audio_child_pids.discard(proc.pid)
+    finally:
+        if path:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+    return 0.0
+
+
 async def playback_mp3_bytes(
     data: bytes,
     generation_ok: Callable[[], bool | Awaitable[bool]],
@@ -250,6 +299,9 @@ async def playback_mp3_bytes(
     settings = get_settings()
     if not await _eval_gen_ok(generation_ok):
         return 0.0
+    if sys.platform == "darwin" and settings.CRUX_DARWIN_MP3_PLAYER.strip().lower() == "afplay":
+        return await _playback_mp3_afplay(data, generation_ok, settings)
+
     ffplay = resolve_ffplay()
     if not ffplay:
         log.error("ffplay_not_found_install_ffmpeg_or_set_CRUX_FFPLAY_PATH")

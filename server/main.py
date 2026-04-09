@@ -31,7 +31,7 @@ from server.daemons.reviewer import ReviewerDaemon
 from server.daemons.watcher import WatcherDaemon
 from server.db import close_postgres, close_redis, init_postgres, init_redis
 from server.db.redis_client import get_redis
-from server.routes import git_routes, health, internal, llm, speak
+from server.routes import git_routes, health, internal, llm, speak, whatsapp
 from server.tts import force_clear_all_locks, kill_all_audio
 from server.tts.eleven_cache import clear_eleven_tts_cache
 
@@ -104,6 +104,7 @@ app.include_router(speak.router)
 app.include_router(llm.router)
 app.include_router(git_routes.router)
 app.include_router(internal.router)
+app.include_router(whatsapp.router)
 
 
 def main() -> None:

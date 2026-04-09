@@ -17,3 +17,5 @@ class TtsPlaybackRequest:
     eleven_voice_id: str
     eleven_model_id: str
     eleven_output_format: str
+    # Resolved persona key for relay JSON (e.g. forge); optional for backwards compatibility.
+    persona: str | None = None

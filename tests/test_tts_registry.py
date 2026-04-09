@@ -114,3 +114,11 @@ def test_effective_chain_keeps_eleven_with_api_key(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(sys, "platform", "darwin")
     ch = effective_provider_chain(r, ["eleven", "say", "edge"], get_settings())
     assert ch == ["eleven", "say", "edge"]
+
+
+def test_effective_chain_relay_url_forces_relay_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CRUX_TTS_RELAY_BASE_URL", "https://tunnel.example")
+    get_settings.cache_clear()
+    r = load_merged_registry(get_settings())
+    ch = effective_provider_chain(r, ["eleven", "say", "edge"], get_settings())
+    assert ch == ["relay"]
