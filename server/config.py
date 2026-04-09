@@ -81,6 +81,14 @@ class CruxSettings(BaseSettings):
     CRUX_ELEVENLABS_VERIFY_TLS: bool = True
     # Redis cache for synthesized MP3 (cleared on server startup); 3600 = 1 hour
     CRUX_TTS_ELEVEN_CACHE_TTL_SEC: int = 3600
+    # ElevenLabs ConvAI / browser voice UI (see web/voice-agent)
+    CRUX_ELEVENLABS_AGENT_ID: str = ""
+    # local = server TTS only. browser|auto = WS to UI when clients exist, else TTS.
+    CRUX_VOICE_OUTPUT: str = "local"
+    # Comma-separated origins for CORS (voice SPA dev server)
+    CRUX_CORS_ORIGINS: str = "http://127.0.0.1:5173,http://localhost:5173"
+    # If set, browser must pass ?secret= on /voice/ws (and optionally downflow header)
+    CRUX_VOICE_WS_SECRET: str = ""
 
     REDIS_URL: str = "redis://127.0.0.1:6379"
     DATABASE_URL: str = "postgresql://crux:crux@127.0.0.1:5433/crux"
